@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>AniCmp</title>
+
+        <link rel="stylesheet" href="lib/bootstrap.css">
+    </head>
+    <body>
+        <div class="container">
+            <h1 class="text-center">AniCmp</h1>
+
+            <form>
+                <!-- Username Inputs -->
+                <div class="row">
+                    <div class="col-sm-6">
+                        <input type="text" id="inputUser1" class="form-control" placeholder="Username 1" value="rangicus">
+                    </div>
+                    <div class="col-sm-6">
+                        <input type="text" id="inputUser2" class="form-control" placeholder="Username 2" value="loveisvivid">
+                    </div>
+                </div>
+
+                <!-- Go -->
+                <div class="row">
+                    <div class="col-sm-12 text-center">
+                        <button class="btn btn-primary" id="buttonStart">Compare!</button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- This is where the comparisons will go. -->
+            <div id="comparisons"></div>
+        </div>
+
+        <script src="lib/jquery.js"></script>
+        <script src="lib/bootstrap.js"></script>
+        <script src="main.js"></script>
+    </body>
+</html>
