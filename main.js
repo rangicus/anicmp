@@ -1,4 +1,9 @@
 // Functions
+function fixMe (id, msg) {
+    console.error(`FIXME ${id}`);
+    console.error(msg);
+}
+
 function aniQuery (query, variables) {
     return new Promise((resolve, reject) => {
         fetch(`https://graphql.anilist.co`, {
@@ -90,6 +95,15 @@ function loadUser (username) {
                     })
                 });
 
+                // Remove Duplicates
+                const onlyIds = allAnime.map(anime => anime.id);
+                for (let i = allAnime.length - 1; i >= 0; i --) {
+                    const anime = allAnime[i];
+
+                    if (onlyIds.indexOf(anime.id) !== i) allAnime.splice(i, 1);
+                }
+
+                // Return
                 resolve({
                     name: username,
                     id: userID,
@@ -113,113 +127,110 @@ function loadUser (username) {
 }
 
 function makeComparisons (user1, user2) {
+    // Local Functions
+    const newImage = anime => $(`<img />`, { src: anime.img.src, title: anime.name, width: 100, height: 150 });
+
+    const newHeader = text => $(`<h1 />`, { text: text, class: `text-center`, style: `cursor: pointer;` })
+        .on(`click`, function () {
+            $(this).next().slideToggle();
+        });
+
     // Setup
-    const divOut = $(`#comparisons`);
-    divOut.empty();
+    $(`#comparisons`).fadeOut(`slow`, function () {
+        // Empty Div
+        $(this).empty();
 
-    // Get Names
-    const names = {};
-    user1.anime.forEach(anime => names[anime.id] = anime);
-    user2.anime.forEach(anime => names[anime.id] = anime);
+        // Get Names
+        const names = user1.anime.concat(user2.anime).reduce((all, anime) => ({ ...all, [anime.id]: anime }), {});
+    
+        // Mark "seen"
+        const seen = [`completed`, `dropped`, `paused`, `current`];
+        const unseen = [`planning`];
+        const people = [user1, user2];
 
-    // Remove duplicates
-    const onlyIds1 = user1.anime.map(x => x.id);
-    for (let i = user1.anime.length - 1; i >= 0; i --) {
-        const anime = user1.anime[i];
-        
-        if ( onlyIds1.indexOf(anime.id) !== i ) user1.anime.splice(i, 1);
-    }
+        for (let person of people) {
+            for (let anime of person.anime) {
+                const status = anime.status.toLowerCase();
 
-    const onlyIds2 = user2.anime.map(x => x.id);
-    for (let i = user2.anime.length - 1; i >= 0; i --) {
-        const anime = user2.anime[i];
-        
-        if ( onlyIds2.indexOf(anime.id) !== i ) user2.anime.splice(i, 1);
-    }
-
-    // Mark "seen"
-    const seen = [`completed`, `dropped`, `paused`, `current`];
-    const unseen = [`planning`];
-    const people = [user1, user2];
-
-    for (let ui = 0; ui < 2; ui ++) {
-        for (let i = 0; i < people[ui].anime.length; i ++) {
-            const anime = people[ui].anime[i];
-            const status = anime.status.toLowerCase();
-
-            if (seen.includes(status)) anime.seen = true;
-            else if (unseen.includes(status)) anime.seen = false;
-            else {
-                console.error(`Weird Status: ${status}`);
-                anime.seen = false;
+                if (seen.includes(status)) anime.seen = true;
+                else if (unseen.includes(status)) anime.seen = false;
+                else fixMe(`gfjboivmrj`, status);
             }
         }
-    }
+    
+        // Find shows that both have seen.
+        const seen1 = user1.anime.filter(anime => anime.seen).map(anime => anime.id);
+        const seen2 = user2.anime.filter(anime => anime.seen).map(anime => anime.id);
+    
+        const bothSeen = seen1.filter(anime => seen2.includes(anime));
+    
+        if (bothSeen.length > 0) {
+            const all = bothSeen.map(x => names[x]);
+    
+            $(this).append($(`<div>`).append(
+                newHeader(`Anime You've Both Seen`),
+                $(`<ul/>`).append(
+                    ...all.map(anime => newImage(anime))
+                )
+            ));
+        }
+    
+        // Find shows that one has and the other hasn't.
+        const onlySeen1 = seen1.filter(anime => seen2.indexOf(anime) === -1);
+        const onlySeen2 = seen2.filter(anime => seen1.indexOf(anime) === -1);
+    
+        if (onlySeen1.length > 0) {
+            const all = onlySeen1.map(x => names[x]);
+    
+            $(this).append($(`<div/>`).append(
+                newHeader(`Anime Only ${user1.name} Has Seen`),
+                $(`<ul/>`).append(
+                    ...all.map(anime => newImage(anime))
+                )
+            ));
+        }
+    
+        if (onlySeen2.length > 0) {
+            const all = onlySeen2.map(x => names[x]);
+    
+            $(this).append($(`<div/>`).append(
+                newHeader(`Anime Only ${user2.name} Has Seen`),
+                $(`<ul/>`).append(
+                    ...all.map(anime => newImage(anime))
+                )
+            ));
+        }
+    
+        // Find shows that they both plan to watch.
+        const plan1 = user1.anime.filter(anime => anime.status.toLowerCase() === `planning`).map(x => x.id);
+        const plan2 = user2.anime.filter(anime => anime.status.toLowerCase() === `planning`).map(x => x.id);
+    
+        const bothPlan = plan1.filter(anime => plan2.includes(anime));
+    
+        if (bothPlan.length > 0) {
+            const all = bothPlan.map(x => names[x]);
+    
+            $(this).append($(`<div/>`).append(
+                newHeader(`Anime You Both Plan To Watch`),
+                $(`<ul/>`).append(
+                    ...all.map(anime => newImage(anime))
+                )
+            ));
+        }
 
-    // Find shows that both have seen.
-    const seen1 = user1.anime.filter(anime => anime.seen).map(anime => anime.id);
-    const seen2 = user2.anime.filter(anime => anime.seen).map(anime => anime.id);
-
-    const bothSeen = seen1.filter(anime => seen2.includes(anime));
-
-    if (bothSeen.length > 0) {
-        const all = bothSeen.map(x => names[x]);
-
-        divOut.append($(`<div>`).append(
-            $(`<h1/>`, { text: `Anime You've Both Seen`, class: `text-center` }),
-            $(`<ul/>`).append(
-                ...all.map(x => $(`<img/>`, { src: x.img.src, alt: x.name }))
-            )
-        ));
-    }
-
-    // Find shows that one has and the other hasn't.
-    const onlySeen1 = seen1.filter(anime => seen2.indexOf(anime) === -1);
-    const onlySeen2 = seen2.filter(anime => seen1.indexOf(anime) === -1);
-
-    if (onlySeen1.length > 0) {
-        const all = onlySeen1.map(x => names[x]);
-
-        divOut.append($(`<div/>`).append(
-            $(`<h1/>`, { text: `Anime Only ${user1.name} Has Seen`, class: `text-center` }),
-            $(`<ul/>`).append(
-                ...all.map(x => $(`<img/>`, { src: x.img.src, alt: x.name }))
-            )
-        ));
-    }
-
-    if (onlySeen2.length > 0) {
-        const all = onlySeen2.map(x => names[x]);
-
-        divOut.append($(`<div/>`).append(
-            $(`<h1/>`, { text: `Anime Only ${user2.name} Has Seen`, class: `text-center` }),
-            $(`<ul/>`).append(
-                ...all.map(x => $(`<img/>`, { src: x.img.src, alt: x.name }))
-            )
-        ));
-    }
-
-    // Find shows that they both plan to watch.
-    const plan1 = user1.anime.filter(anime => anime.status.toLowerCase() === `planning`).map(x => x.id);
-    const plan2 = user2.anime.filter(anime => anime.status.toLowerCase() === `planning`).map(x => x.id);
-
-    const bothPlan = plan1.filter(anime => plan2.includes(anime));
-
-    if (bothPlan.length > 0) {
-        const all = bothPlan.map(x => names[x]);
-
-        divOut.append($(`<div/>`).append(
-            $(`<h1/>`, { text: `Anime You Both Plan To Watch`, class: `text-center` }),
-            $(`<ul/>`).append(
-                ...all.map(x => $(`<img/>`, { src: x.img.src, alt: x.name }))
-            )
-        ));
-    }
+        $(this).fadeIn(`slow`);
+    });
 }
 
 // Main
 
 // Bindings
+$(document).ready(function () {
+    const names = [`loveisvivid`, `Asourcious`];
+    
+    $(`#inputUser2`).val( names[Math.floor(Math.random() * names.length)] );
+});
+
 $(`#buttonStart`).on(`click`, function () {
     // Disable Inputs
     const disable = [ this, `#inputUser1`, `#inputUser2` ];
